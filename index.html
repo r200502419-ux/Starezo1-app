@@ -1,197 +1,183 @@
 <!DOCTYPE html>
-<html>
+<html lang="ja">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>スタレゾモジュール計算機</title>
-
-<link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#111111">
-
+<title>スタレゾ 最適モジュール検索</title>
 <style>
-body{font-family:sans-serif;background:#111;color:#fff;padding:10px}
-input,select,button{font-size:16px;margin:4px 0;padding:6px}
-button{background:#2196f3;border:none;color:#fff;border-radius:6px}
-.card{background:#222;padding:8px;margin:6px 0;border-radius:8px}
-.small{font-size:13px;color:#aaa}
+body{font-family:sans-serif;background:#111;color:#fff;padding:12px}
+select,input,button{padding:8px;margin:4px 0;width:100%}
+button{background:#00c853;border:none;color:#fff}
+.card{background:#222;padding:8px;margin:6px 0}
+.result{background:#1e1e1e;padding:10px;margin:6px 0;border-left:4px solid #00c853}
+.small{font-size:12px;color:#aaa}
 </style>
 </head>
 <body>
 
-<h2>スタレゾモジュール計算機</h2>
+<h2>最優先Lv6 検索ツール</h2>
 
-<h3>セーブデータ</h3>
-<select id="saveSlots"></select><br>
-<input type="text" id="saveName" placeholder="保存名">
-<button onclick="saveCurrent()">保存</button>
-<button onclick="loadCurrent()">読込</button>
-<button onclick="deleteCurrent()">削除</button>
-
-<hr>
-
-<h3>モジュール登録（最大100）</h3>
-
-<div id="moduleInputs"></div>
-<button onclick="addLinkInput()">リンク追加</button>
-<button onclick="addModule()">モジュール登録</button>
-
-<div id="moduleList"></div>
-
-<hr>
-
-<h3>検索</h3>
+<h3>最優先パワーコア</h3>
 <select id="priority"></select>
-<button onclick="calculate()">計算</button>
 
+<hr>
+
+<h3>モジュール登録</h3>
+
+<select id="rarity">
+<option value="gold">金（3リンク）</option>
+<option value="purple">紫（2リンク）</option>
+</select>
+
+<div id="links"></div>
+
+<button onclick="addModule()">追加</button>
+
+<h3>登録済み</h3>
+<div id="moduleList"></div>
+<p class="small">最大100個</p>
+
+<button onclick="calculate()">計算（上位50）</button>
+
+<h3>結果</h3>
 <div id="results"></div>
 
 <script>
-const linkTypes=[
-"敏捷強化",
-"特攻ダメージ強化",
-"集中攻撃速度"
+const linkTypes = [
+"極・適応力","極・HP変動","筋力強化","知力強化",
+"特攻回復強化","マスタリー回復強化","魔法耐性","物理耐性",
+"集中・詠唱","集中・会心","極・HP凝縮","極・応急処置",
+"極・絶境守護","極・HP吸収","極・幸運会心","敏捷強化",
+"特攻ダメージ強化","精鋭打撃","集中・攻撃速度","集中・幸運","極・ダメージ増強"
 ];
 
-let modules=JSON.parse(localStorage.getItem("modules"))||[];
-let saves=JSON.parse(localStorage.getItem("moduleSaves"))||{};
+let modules = JSON.parse(localStorage.getItem("modules"))||[];
 
-function init(){
-  const p=document.getElementById("priority");
-  linkTypes.forEach(l=>{
-    let o=document.createElement("option");
-    o.text=l;
-    p.add(o);
-  });
-  addLinkInput();
-  render();
-  refreshSaveList();
+const prioritySelect=document.getElementById("priority");
+linkTypes.forEach(l=>{
+ let o=document.createElement("option");
+ o.text=l;
+ prioritySelect.add(o);
+});
+
+function renderLinks(){
+ const rarity=document.getElementById("rarity").value;
+ const container=document.getElementById("links");
+ container.innerHTML="";
+ const count=rarity==="gold"?3:2;
+ for(let i=0;i<count;i++){
+   container.innerHTML+=`
+   <select class="lname">
+     ${linkTypes.map(l=>`<option>${l}</option>`).join("")}
+   </select>
+   <input type="number" class="lval" placeholder="値(1-20)" min="1" max="20">
+   `;
+ }
 }
+renderLinks();
+document.getElementById("rarity").onchange=renderLinks;
+
 function save(){localStorage.setItem("modules",JSON.stringify(modules));}
 
-function addLinkInput(){
-  const div=document.createElement("div");
-  div.className="card";
-  div.innerHTML=`
-<select class="ltype">
-${linkTypes.map(l=>`<option>${l}</option>`).join("")}
-</select>
-<input type="number" class="lval" min="1" max="10" placeholder="1-10">
-`;
-  document.getElementById("moduleInputs").appendChild(div);
+function render(){
+ const list=document.getElementById("moduleList");
+ list.innerHTML="";
+ modules.forEach((m,i)=>{
+  list.innerHTML+=`<div class="card">
+   ${m.links.map(l=>`${l.name}+${l.value}`).join(" / ")}
+   <button onclick="removeModule(${i})">削除</button>
+  </div>`;
+ });
 }
 
 function addModule(){
-  if(modules.length>=100){alert("100個まで");return;}
-  const inputs=document.querySelectorAll("#moduleInputs .card");
-  let links=[];
-  inputs.forEach(c=>{
-    const type=c.querySelector(".ltype").value;
-    const val=parseInt(c.querySelector(".lval").value);
-    if(val && val>=1 && val<=10){
-      links.push({type,value:val});
-    }
-  });
-  if(links.length<2||links.length>3){alert("2〜3リンク必要");return;}
-  modules.push(links);
-  save();
-  render();
-  document.getElementById("moduleInputs").innerHTML="";
-  addLinkInput();
-}
-
-function render(){
-  const list=document.getElementById("moduleList");
-  list.innerHTML="";
-  modules.forEach((m,i)=>{
-    list.innerHTML+=`<div class="card">
-${m.map(l=>l.type+"+"+l.value).join("<br>")}
-<br><button onclick="removeModule(${i})">削除</button>
-</div>`;
-  });
+ if(modules.length>=100){alert("最大100個");return;}
+ const names=document.querySelectorAll(".lname");
+ const vals=document.querySelectorAll(".lval");
+ let links=[];
+ for(let i=0;i<names.length;i++){
+   let v=parseInt(vals[i].value);
+   if(!v){alert("値入力");return;}
+   links.push({name:names[i].value,value:v});
+ }
+ modules.push({links});
+ save(); render();
+ document.querySelectorAll(".lval").forEach(i=>i.value="");
 }
 
 function removeModule(i){
-  modules.splice(i,1);
-  save();render();
+ modules.splice(i,1); save(); render();
 }
 
-function getLevel(t){
-  if(t>=20)return 6;
-  if(t>=16)return 5;
-  if(t>=12)return 4;
-  if(t>=8)return 3;
-  if(t>=4)return 2;
-  if(t>=1)return 1;
-  return 0;
+function getLv(sum){
+ if(sum>=20) return 6;
+ if(sum>=16) return 5;
+ if(sum>=12) return 4;
+ if(sum>=8) return 3;
+ if(sum>=4) return 2;
+ if(sum>=1) return 1;
+ return 0;
 }
 
 function calculate(){
-  const priority=document.getElementById("priority").value;
-  let results=[];
-  for(let i=0;i<modules.length;i++)
-  for(let j=i+1;j<modules.length;j++)
-  for(let k=j+1;k<modules.length;k++)
-  for(let l=k+1;l<modules.length;l++){
-    let combo=[modules[i],modules[j],modules[k],modules[l]];
-    let totals={};
-    combo.flat().forEach(link=>{
-      totals[link.type]=(totals[link.type]||0)+link.value;
-    });
-    if(getLevel(totals[priority]||0)==6){
-      let lv6count=0;
-      Object.values(totals).forEach(t=>{
-        if(getLevel(t)==6)lv6count++;
-      });
-      results.push({combo,lv6count});
-    }
-  }
-  results.sort((a,b)=>b.lv6count-a.lv6count);
-  results=results.slice(0,50);
+ const resultsDiv=document.getElementById("results");
+ resultsDiv.innerHTML="計算中...";
+ const priority=prioritySelect.value;
+ let best=[];
 
-  const div=document.getElementById("results");
-  div.innerHTML="";
-  results.forEach(r=>{
-    div.innerHTML+=`<div class="card">
-LV6数:${r.lv6count}<br>
-${r.combo.map(m=>m.map(l=>l.type+"+"+l.value).join(", ")).join("<br>")}
-</div>`;
-  });
-}
+ for(let a=0;a<modules.length-3;a++){
+ for(let b=a+1;b<modules.length-2;b++){
+ for(let c=b+1;c<modules.length-1;c++){
+ for(let d=c+1;d<modules.length;d++){
 
-function refreshSaveList(){
-  const s=document.getElementById("saveSlots");
-  s.innerHTML="";
-  Object.keys(saves).forEach(n=>{
-    let o=document.createElement("option");
-    o.text=n;s.add(o);
-  });
-}
-function saveCurrent(){
-  const n=document.getElementById("saveName").value.trim();
-  if(!n)return;
-  saves[n]=modules;
-  localStorage.setItem("moduleSaves",JSON.stringify(saves));
-  refreshSaveList();
-}
-function loadCurrent(){
-  const n=document.getElementById("saveSlots").value;
-  if(!n)return;
-  modules=saves[n];
-  save();render();
-}
-function deleteCurrent(){
-  const n=document.getElementById("saveSlots").value;
-  delete saves[n];
-  localStorage.setItem("moduleSaves",JSON.stringify(saves));
-  refreshSaveList();
+   let totals={};
+   [modules[a],modules[b],modules[c],modules[d]].forEach(m=>{
+     m.links.forEach(l=>{
+       totals[l.name]=(totals[l.name]||0)+l.value;
+     });
+   });
+
+   if(!totals[priority]||totals[priority]<20) continue;
+
+   let lv6count=0;
+   let totalLv=0;
+   for(let key in totals){
+     let lv=getLv(totals[key]);
+     totalLv+=lv;
+     if(lv===6) lv6count++;
+   }
+
+   best.push({
+     modules:[a,b,c,d],
+     lv6count,
+     priorityValue:totals[priority],
+     totalLv
+   });
+
+ }}}
+ }
+
+ best.sort((x,y)=>
+   y.lv6count-x.lv6count ||
+   y.priorityValue-x.priorityValue ||
+   y.totalLv-x.totalLv
+ );
+
+ const top=best.slice(0,50);
+
+ if(top.length===0){resultsDiv.innerHTML="該当なし";return;}
+
+ resultsDiv.innerHTML=top.map((r,i)=>`
+ <div class="result">
+ <b>#${i+1}</b> Lv6×${r.lv6count} / 総Lv ${r.totalLv}<br>
+ ${r.modules.map(idx=>
+   modules[idx].links.map(l=>`${l.name}+${l.value}`).join(" / ")
+ ).join("<br>---<br>")}
+ </div>
+ `).join("");
 }
 
-init();
-
-if('serviceWorker'in navigator){
- navigator.serviceWorker.register('service-worker.js');
-}
+render();
 </script>
-
 </body>
 </html>
