@@ -7,11 +7,9 @@
 <style>
 body{font-family:sans-serif;background:#111;color:#fff;padding:12px}
 select,input,button{padding:8px;margin:4px 0;width:100%}
-button{background:#00c853;border:none;color:#fff;font-size:16px}
-.card{
-  background:#222;padding:8px;margin:6px 0;
-  border-radius:6px;
-}
+button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6px}
+
+/* 登録モジュールの2列表示 */
 .grid{
   display:flex;
   flex-wrap:wrap;
@@ -19,12 +17,36 @@ button{background:#00c853;border:none;color:#fff;font-size:16px}
 }
 .grid .card{
   width:48%;
+  background:#222;
+  padding:8px;
+  border-radius:6px;
 }
+
+/* リンク＋値の1セットカード */
+.link-set{
+  background:#222;
+  padding:10px;
+  margin:6px 0;
+  border-radius:6px;
+}
+.link-set select{
+  width:60%;
+  display:inline-block;
+}
+.link-set input{
+  width:35%;
+  display:inline-block;
+  margin-left:4px;
+}
+
+/* 結果表示 */
 .result{
   background:#1e1e1e;padding:10px;margin:6px 0;
   border-left:4px solid #00c853;cursor:pointer;border-radius:6px;
 }
 .hidden{display:none}
+
+/* 16以上コアの2列表示 */
 .core-grid{
   display:flex;
   flex-wrap:wrap;
@@ -94,12 +116,15 @@ function renderLinks(){
  const container=document.getElementById("links");
  container.innerHTML="";
  const count=rarity==="gold"?3:2;
+
  for(let i=0;i<count;i++){
    container.innerHTML+=`
-   <select class="lname">
-     ${linkTypes.map(l=>`<option>${l}</option>`).join("")}
-   </select>
-   <input type="number" class="lval" placeholder="値(1-20)" min="1" max="20">
+     <div class="link-set">
+       <select class="lname">
+         ${linkTypes.map(l=>`<option>${l}</option>`).join("")}
+       </select>
+       <input type="number" class="lval" placeholder="値(1-20)" min="1" max="20">
+     </div>
    `;
  }
 }
@@ -138,16 +163,6 @@ function addModule(){
 
 function removeModule(i){
  modules.splice(i,1); save(); render();
-}
-
-function getLv(sum){
- if(sum>=20) return 6;
- if(sum>=16) return 5;
- if(sum>=12) return 4;
- if(sum>=8) return 3;
- if(sum>=4) return 2;
- if(sum>=1) return 1;
- return 0;
 }
 
 function calculate(){
