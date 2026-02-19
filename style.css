@@ -1,0 +1,125 @@
+body {
+  font-family: sans-serif;
+  background: #111;
+  color: #fff;
+  padding: 12px;
+}
+
+select, input, button {
+  padding: 8px;
+  margin: 4px 0;
+  width: 100%;
+}
+
+button {
+  background: #00c853;
+  border: none;
+  color: #fff;
+  font-size: 16px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+/* ▼ 結果カードの3列表示 */
+.result-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.result-card {
+  width: 31%;
+  background: #1e1e1e;
+  padding: 8px;
+  border-radius: 6px;
+  border-left: 4px solid #00c853;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.hidden {
+  display: none;
+}
+
+/* ▼ 色分け（強さ） */
+.result-card.gold {
+  border-left-color: #FFD700;
+}
+
+.result-card.purple {
+  border-left-color: #B388FF;
+}
+
+.result-card.blue {
+  border-left-color: #42A5F5;
+}
+
+.result-card.green {
+  border-left-color: #4CAF50;
+}
+
+/* ▼ 16以上コアの2列表示 */
+.core-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.core-item {
+  width: 48%;
+  background: #222;
+  padding: 4px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+/* ▼ 登録モジュールの3列表示 */
+.grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.grid .card {
+  width: 31%;
+  background: #222;
+  padding: 8px;
+  border-radius: 6px;
+  font-size: 13px;
+}
+
+/* ▼ 編集フォーム */
+.edit-card {
+  background: #333;
+  padding: 8px;
+  border-radius: 6px;
+  margin-top: 6px;
+}
+
+/* ▼ リンクセット */
+.link-set {
+  background: #222;
+  padding: 10px;
+  margin: 6px 0;
+  border-radius: 6px;
+}
+
+.link-set select {
+  width: 60%;
+  display: inline-block;
+}
+
+.link-set input {
+  width: 35%;
+  display: inline-block;
+  margin-left: 4px;
+}
+
+/* ▼ おすすめコア一覧 */
+.recommended-box {
+  background: #222;
+  padding: 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+}
