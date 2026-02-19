@@ -91,6 +91,13 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 
 <hr>
 
+<!-- ▼ ソート機能 -->
+<h3>並び替え</h3>
+<select id="sortType" onchange="renderResults()">
+  <option value="count">16以上のコア数が多い順</option>
+  <option value="name">16以上のコア種類名（五十音順）</option>
+</select>
+
 <!-- ▼ 結果を上に移動 -->
 <h3>結果</h3>
 <div id="results" class="result-grid"></div>
@@ -125,6 +132,7 @@ const linkTypes = [
 
 let modules = JSON.parse(localStorage.getItem("modules"))||[];
 let editingIndex = null;
+let lastResults = []; // ← ソート用に保存
 
 const prioritySelect=document.getElementById("priority");
 linkTypes.forEach(l=>{
@@ -269,17 +277,38 @@ function calculate(){
    best.push({
      modules:[a,b,c,d],
      priorityValue:totals[priority],
-     core16
+     core16,
+     coreCount: Object.keys(core16).length
    });
 
  }}}}
 
- if(best.length===0){
+ lastResults = best;
+ renderResults();
+}
+
+function renderResults(){
+ const resultsDiv=document.getElementById("results");
+ const sortType=document.getElementById("sortType").value;
+
+ let arr=[...lastResults];
+
+ if(sortType==="count"){
+   arr.sort((a,b)=> b.coreCount - a.coreCount);
+ } else {
+   arr.sort((a,b)=>{
+     const A = Object.keys(a.core16).sort().join(",");
+     const B = Object.keys(b.core16).sort().join(",");
+     return A.localeCompare(B,"ja");
+   });
+ }
+
+ if(arr.length===0){
    resultsDiv.innerHTML="該当なし";
    return;
  }
 
- resultsDiv.innerHTML = best.map((r,i)=>{
+ resultsDiv.innerHTML = arr.map((r,i)=>{
    let coreItems = Object.keys(r.core16).map(k=>
      `<div class="core-item">${k} ${r.core16[k]}</div>`
    ).join("");
@@ -291,7 +320,7 @@ function calculate(){
    return `
    <div class="result-card" onclick="toggleDetail('d${i}')">
      <b>#${i+1}</b><br>
-     優先：${priority} → ${r.priorityValue}<br>
+     優先：${prioritySelect.value} → ${r.priorityValue}<br>
      <b>16以上のコア</b>
      <div class="core-grid">${coreItems}</div>
 
