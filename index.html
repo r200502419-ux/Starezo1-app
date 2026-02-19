@@ -22,7 +22,7 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
   border-radius:6px;
   border-left:4px solid #00c853;
   cursor:pointer;
-  font-size:12px; /* A1：少し小さめ */
+  font-size:12px;
 }
 .hidden{display:none}
 
@@ -91,14 +91,29 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 
 <hr>
 
+<!-- ▼ 16以上のコア数フィルタ -->
+<h3>16以上のコア数で絞り込み</h3>
+<select id="coreCountFilter" onchange="renderResults()">
+  <option value="">指定なし</option>
+  <option value="4">4個</option>
+  <option value="3">3個</option>
+  <option value="2">2個</option>
+  <option value="1">1個</option>
+</select>
+
+<!-- ▼ パワーコア指定フィルタ -->
+<h3>パワーコア指定</h3>
+<select id="coreTypeFilter" onchange="renderResults()">
+  <option value="">指定なし</option>
+</select>
+
 <!-- ▼ ソート機能 -->
 <h3>並び替え</h3>
 <select id="sortType" onchange="renderResults()">
-  <option value="count">16以上のコア数が多い順</option>
   <option value="name">16以上のコア種類名（五十音順）</option>
 </select>
 
-<!-- ▼ 結果を上に移動 -->
+<!-- ▼ 結果 -->
 <h3>結果</h3>
 <div id="results" class="result-grid"></div>
 
@@ -132,7 +147,7 @@ const linkTypes = [
 
 let modules = JSON.parse(localStorage.getItem("modules"))||[];
 let editingIndex = null;
-let lastResults = []; // ← ソート用に保存
+let lastResults = [];
 
 const prioritySelect=document.getElementById("priority");
 linkTypes.forEach(l=>{
@@ -284,24 +299,47 @@ function calculate(){
  }}}}
 
  lastResults = best;
+ updateCoreTypeFilter();
  renderResults();
+}
+
+function updateCoreTypeFilter() {
+  const sel = document.getElementById("coreTypeFilter");
+  sel.innerHTML = `<option value="">指定なし</option>`;
+
+  let set = new Set();
+  lastResults.forEach(r => {
+    Object.keys(r.core16).forEach(k => set.add(k));
+  });
+
+  [...set].sort((a,b)=>a.localeCompare(b,"ja")).forEach(k=>{
+    sel.innerHTML += `<option value="${k}">${k}</option>`;
+  });
 }
 
 function renderResults(){
  const resultsDiv=document.getElementById("results");
- const sortType=document.getElementById("sortType").value;
 
  let arr=[...lastResults];
 
- if(sortType==="count"){
-   arr.sort((a,b)=> b.coreCount - a.coreCount);
- } else {
-   arr.sort((a,b)=>{
-     const A = Object.keys(a.core16).sort().join(",");
-     const B = Object.keys(b.core16).sort().join(",");
-     return A.localeCompare(B,"ja");
-   });
+ // ▼ 16以上のコア数フィルタ
+ const countFilter = document.getElementById("coreCountFilter").value;
+ if (countFilter) {
+   arr = arr.filter(r => r.coreCount == Number(countFilter));
  }
+
+ // ▼ パワーコア指定フィルタ
+ const typeFilter = document.getElementById("coreTypeFilter").value;
+ if (typeFilter) {
+   arr = arr.filter(r => Object.keys(r.core16).includes(typeFilter));
+ }
+
+ // ▼ ソート（名前順）
+ arr.sort((a,b)=>{
+   const A = Object.keys(a.core16).sort().join(",");
+   const B = Object.keys(b.core16).sort().join(",");
+   return A.localeCompare(B,"ja");
+ });
 
  if(arr.length===0){
    resultsDiv.innerHTML="該当なし";
