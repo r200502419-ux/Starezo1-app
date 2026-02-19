@@ -9,8 +9,9 @@ body{font-family:sans-serif;background:#111;color:#fff;padding:12px}
 select,input,button{padding:8px;margin:4px 0;width:100%}
 button{background:#00c853;border:none;color:#fff}
 .card{background:#222;padding:8px;margin:6px 0}
-.result{background:#1e1e1e;padding:10px;margin:6px 0;border-left:4px solid #00c853}
+.result{background:#1e1e1e;padding:10px;margin:6px 0;border-left:4px solid #00c853;cursor:pointer}
 .small{font-size:12px;color:#aaa}
+.hidden{display:none}
 </style>
 </head>
 <body>
@@ -154,44 +155,69 @@ function calculate(){
      });
    });
 
+   // ★ 優先コアが20以上必須
    if(!totals[priority]||totals[priority]<20) continue;
 
-   let lv6count=0;
-   let totalLv=0;
-   for(let key in totals){
-     let lv=getLv(totals[key]);
-     totalLv+=lv;
-     if(lv===6) lv6count++;
+   // ★ 優先以外のコアは16以上必須
+   let ok=true;
+   for(let key of linkTypes){
+     if(key===priority) continue;
+     if((totals[key]||0) < 16){
+       ok=false;
+       break;
+     }
+   }
+   if(!ok) continue;
+
+   // レベル計算
+   let detail = {};
+   for(let key of linkTypes){
+     detail[key] = {
+       sum: totals[key] || 0,
+       lv: getLv(totals[key] || 0)
+     };
    }
 
    best.push({
      modules:[a,b,c,d],
-     lv6count,
-     priorityValue:totals[priority],
-     totalLv
+     detail
    });
 
  }}}
  }
 
- best.sort((x,y)=>
-   y.lv6count-x.lv6count ||
-   y.priorityValue-x.priorityValue ||
-   y.totalLv-x.totalLv
- );
-
  const top=best.slice(0,50);
 
- if(top.length===0){resultsDiv.innerHTML="該当なし";return;}
+ if(top.length===0){
+   resultsDiv.innerHTML="該当なし";
+   return;
+ }
 
- resultsDiv.innerHTML=top.map((r,i)=>`
- <div class="result">
- <b>#${i+1}</b> Lv6×${r.lv6count} / 総Lv ${r.totalLv}<br>
- ${r.modules.map(idx=>
-   modules[idx].links.map(l=>`${l.name}+${l.value}`).join(" / ")
- ).join("<br>---<br>")}
- </div>
- `).join("");
+ resultsDiv.innerHTML = top.map((r,i)=>{
+   let coreList = linkTypes.map(k =>
+     `${k}: ${r.detail[k].sum}（Lv${r.detail[k].lv}）`
+   ).join("<br>");
+
+   let moduleDetail = r.modules.map(idx =>
+     modules[idx].links.map(l=>`${l.name}+${l.value}`).join(" / ")
+   ).join("<br>---<br>");
+
+   return `
+   <div class="result" onclick="toggleDetail('d${i}')">
+     <b>#${i+1}</b><br>
+     ${coreList}
+     <div id="d${i}" class="hidden" style="margin-top:10px;">
+       <b>使用モジュール</b><br>
+       ${moduleDetail}
+     </div>
+   </div>
+   `;
+ }).join("");
+}
+
+function toggleDetail(id){
+ const el=document.getElementById(id);
+ el.classList.toggle("hidden");
 }
 
 render();
