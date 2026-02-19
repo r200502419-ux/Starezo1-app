@@ -110,7 +110,7 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 <!-- ▼ ソート機能 -->
 <h3>並び替え</h3>
 <select id="sortType" onchange="renderResults()">
-  <option value="name">16以上のコア種類名（五十音順）</option>
+  <option value="best">20に近い順（優先 → その他）</option>
 </select>
 
 <!-- ▼ 結果 -->
@@ -334,8 +334,16 @@ function renderResults(){
    arr = arr.filter(r => Object.keys(r.core16).includes(typeFilter));
  }
 
- // ▼ ソート（名前順）
+ // ▼ ソート（20に近い順 → その他のコアも20に近い順 → 名前順）
  arr.sort((a,b)=>{
+   const da = Math.abs(20 - a.priorityValue);
+   const db = Math.abs(20 - b.priorityValue);
+   if (da !== db) return da - db;
+
+   const sa = Object.values(a.core16).reduce((sum,v)=> sum + Math.abs(20 - v), 0);
+   const sb = Object.values(b.core16).reduce((sum,v)=> sum + Math.abs(20 - v), 0);
+   if (sa !== sb) return sa - sb;
+
    const A = Object.keys(a.core16).sort().join(",");
    const B = Object.keys(b.core16).sort().join(",");
    return A.localeCompare(B,"ja");
