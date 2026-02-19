@@ -253,6 +253,9 @@ function calculate(){
      }
    });
 
+   // ★ 追加：16以上が1つもなければスキップ
+   if (Object.keys(core16).length === 0) continue;
+
    best.push({
      modules:[a,b,c,d],
      priorityValue:totals[priority],
