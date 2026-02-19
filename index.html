@@ -9,17 +9,26 @@ body{font-family:sans-serif;background:#111;color:#fff;padding:12px}
 select,input,button{padding:8px;margin:4px 0;width:100%}
 button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6px}
 
-/* 登録モジュールの2列表示 */
+/* 登録モジュールの3列表示 */
 .grid{
   display:flex;
   flex-wrap:wrap;
   gap:6px;
 }
 .grid .card{
-  width:48%;
+  width:31%;
   background:#222;
   padding:8px;
   border-radius:6px;
+  font-size:13px;
+}
+
+/* 編集フォームのカード */
+.edit-card{
+  background:#333;
+  padding:8px;
+  border-radius:6px;
+  margin-top:6px;
 }
 
 /* リンク＋値の1セットカード */
@@ -68,7 +77,6 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 <h3>最優先パワーコア</h3>
 <select id="priority"></select>
 
-<!-- 計算ボタンを上に移動 -->
 <button onclick="calculate()">計算（上位50）</button>
 
 <hr>
@@ -92,7 +100,7 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 <div id="results"></div>
 
 <script>
-// ★ プルダウン順（学さん指定）
+// ★ プルダウン順
 const linkTypes = [
   "極・ダメージ増強","極・適応力","極・HP変動","極・HP凝縮",
   "極・応急処置","極・絶境守護","極・HP吸収","極・幸運会心",
@@ -103,6 +111,7 @@ const linkTypes = [
 ];
 
 let modules = JSON.parse(localStorage.getItem("modules"))||[];
+let editingIndex = null;
 
 const prioritySelect=document.getElementById("priority");
 linkTypes.forEach(l=>{
@@ -136,14 +145,66 @@ function save(){localStorage.setItem("modules",JSON.stringify(modules));}
 function render(){
  const list=document.getElementById("moduleList");
  list.innerHTML="";
+
  modules.forEach((m,i)=>{
-  list.innerHTML+=`
-   <div class="card">
-     <b>${i+1}:</b><br>
-     ${m.links.map(l=>`${l.name}+${l.value}`).join(" / ")}
-     <br><button onclick="removeModule(${i})">削除</button>
-   </div>`;
+   if(editingIndex === i){
+     // 編集モード
+     list.innerHTML += `
+       <div class="card">
+         <b>${i+1} 編集中</b>
+         <div class="edit-card">
+           ${m.links.map((l,idx)=>`
+             <div class="link-set">
+               <select class="edit-name" data-idx="${idx}">
+                 ${linkTypes.map(t=>`<option ${t===l.name?"selected":""}>${t}</option>`).join("")}
+               </select>
+               <input type="number" class="edit-value" data-idx="${idx}" value="${l.value}" min="1" max="20">
+             </div>
+           `).join("")}
+           <button onclick="saveEdit(${i})">保存</button>
+           <button onclick="cancelEdit()">キャンセル</button>
+         </div>
+       </div>
+     `;
+   } else {
+     // 通常表示
+     list.innerHTML+=`
+       <div class="card">
+         <b>${i+1}:</b><br>
+         ${m.links.map(l=>`${l.name}+${l.value}`).join(" / ")}
+         <br>
+         <button onclick="startEdit(${i})">編集</button>
+         <button onclick="removeModule(${i})">削除</button>
+       </div>`;
+   }
  });
+}
+
+function startEdit(i){
+ editingIndex = i;
+ render();
+}
+
+function cancelEdit(){
+ editingIndex = null;
+ render();
+}
+
+function saveEdit(i){
+ const names=document.querySelectorAll(".edit-name");
+ const vals=document.querySelectorAll(".edit-value");
+
+ let newLinks=[];
+ for(let j=0;j<names.length;j++){
+   let v=parseInt(vals[j].value);
+   if(!v){alert("値を入力してください");return;}
+   newLinks.push({name:names[j].value,value:v});
+ }
+
+ modules[i].links = newLinks;
+ save();
+ editingIndex = null;
+ render();
 }
 
 function addModule(){
@@ -183,10 +244,8 @@ function calculate(){
      });
    });
 
-   // ★ 優先コア20以上必須
    if(!totals[priority]||totals[priority]<20) continue;
 
-   // ★ 16以上のコアだけ抽出（条件には使わない）
    let core16 = {};
    linkTypes.forEach(k=>{
      if(k!==priority && (totals[k]||0)>=16){
@@ -200,8 +259,7 @@ function calculate(){
      core16
    });
 
- }}}
- }
+ }}}}
 
  const top=best.slice(0,50);
 
