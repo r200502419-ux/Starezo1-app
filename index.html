@@ -4,86 +4,37 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>スタレゾ 最適モジュール検索</title>
-<style>
-body{font-family:sans-serif;background:#111;color:#fff;padding:12px}
-select,input,button{padding:8px;margin:4px 0;width:100%}
-button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6px}
 
-/* 結果の3列表示 */
-.result-grid{
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
-}
-.result-card{
-  width:31%;
-  background:#1e1e1e;
-  padding:8px;
-  border-radius:6px;
-  border-left:4px solid #00c853;
-  cursor:pointer;
-  font-size:12px; /* A1：少し小さめ */
-}
-.hidden{display:none}
+<!-- CSS は後で貼る -->
+<link rel="stylesheet" href="style.css">
 
-/* 16以上コアの2列表示 */
-.core-grid{
-  display:flex;
-  flex-wrap:wrap;
-  gap:4px;
-}
-.core-item{
-  width:48%;
-  background:#222;
-  padding:4px;
-  border-radius:4px;
-  font-size:11px;
-}
-
-/* 登録モジュールの3列表示 */
-.grid{
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
-}
-.grid .card{
-  width:31%;
-  background:#222;
-  padding:8px;
-  border-radius:6px;
-  font-size:13px;
-}
-
-/* 編集フォーム */
-.edit-card{
-  background:#333;
-  padding:8px;
-  border-radius:6px;
-  margin-top:6px;
-}
-
-/* リンクセット */
-.link-set{
-  background:#222;
-  padding:10px;
-  margin:6px 0;
-  border-radius:6px;
-}
-.link-set select{
-  width:60%;
-  display:inline-block;
-}
-.link-set input{
-  width:35%;
-  display:inline-block;
-  margin-left:4px;
-}
-</style>
 </head>
 <body>
 
-<h2>最優先Lv6 検索ツール</h2>
+<h2>最適モジュール検索ツール</h2>
 
+<!-- ▼ 職業選択 -->
+<h3>職業</h3>
+<select id="jobSelect" onchange="onJobChange()"></select>
+
+<!-- ▼ ビルドタイプ選択 -->
+<h3>ビルドタイプ</h3>
+<select id="buildSelect" onchange="onBuildChange()"></select>
+
+<!-- ▼ おすすめコア一覧（👍） -->
+<h3>おすすめコア（👍）</h3>
+<div id="recommendedList" class="recommended-box"></div>
+
+<!-- ▼ おすすめコアフィルタ -->
+<h3>おすすめコアフィルタ</h3>
+<select id="recommendedFilter" onchange="renderResults()">
+  <option value="none">フィルタなし</option>
+  <option value="1">1つ以上含む</option>
+  <option value="2">2つ以上含む</option>
+  <option value="all">全部含む</option>
+</select>
+
+<!-- ▼ 最優先コア -->
 <h3>最優先パワーコア</h3>
 <select id="priority"></select>
 
@@ -91,24 +42,26 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 
 <hr>
 
-<!-- ▼ ソート機能 -->
+<!-- ▼ ソート -->
 <h3>並び替え</h3>
 <select id="sortType" onchange="renderResults()">
+  <option value="recommended">おすすめコア数が多い順</option>
   <option value="count">16以上のコア数が多い順</option>
   <option value="name">16以上のコア種類名（五十音順）</option>
 </select>
 
-<!-- ▼ 結果を上に移動 -->
+<!-- ▼ 結果 -->
 <h3>結果</h3>
 <div id="results" class="result-grid"></div>
 
 <hr>
 
+<!-- ▼ モジュール登録 -->
 <h3>モジュール登録</h3>
 
 <select id="rarity">
-<option value="gold">金（3リンク）</option>
-<option value="purple">紫（2リンク）</option>
+  <option value="gold">金（3リンク）</option>
+  <option value="purple">紫（2リンク）</option>
 </select>
 
 <div id="links"></div>
@@ -119,225 +72,8 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 <div id="moduleList" class="grid"></div>
 <p style="font-size:12px;color:#aaa">最大300個</p>
 
-<script>
-// ▼ プルダウン順
-const linkTypes = [
-  "極・ダメージ増強","極・適応力","極・HP変動","極・HP凝縮",
-  "極・応急処置","極・絶境守護","極・HP吸収","極・幸運会心",
-  "集中・詠唱","集中・会心","集中・攻撃速度","集中・幸運",
-  "特攻ダメージ強化","精鋭打撃","筋力強化","知力強化",
-  "敏捷強化","特攻回復強化","マスタリー回復強化",
-  "魔法耐性","物理耐性"
-];
+<!-- JS は後で貼る -->
+<script src="main.js"></script>
 
-let modules = JSON.parse(localStorage.getItem("modules"))||[];
-let editingIndex = null;
-let lastResults = []; // ← ソート用に保存
-
-const prioritySelect=document.getElementById("priority");
-linkTypes.forEach(l=>{
- let o=document.createElement("option");
- o.text=l;
- prioritySelect.add(o);
-});
-
-function renderLinks(){
- const rarity=document.getElementById("rarity").value;
- const container=document.getElementById("links");
- container.innerHTML="";
- const count=rarity==="gold"?3:2;
-
- for(let i=0;i<count;i++){
-   container.innerHTML+=`
-     <div class="link-set">
-       <select class="lname">
-         ${linkTypes.map(l=>`<option>${l}</option>`).join("")}
-       </select>
-       <input type="number" class="lval" placeholder="値(1-20)" min="1" max="20">
-     </div>
-   `;
- }
-}
-renderLinks();
-document.getElementById("rarity").onchange=renderLinks;
-
-function save(){localStorage.setItem("modules",JSON.stringify(modules));}
-
-function render(){
- const list=document.getElementById("moduleList");
- list.innerHTML="";
-
- modules.forEach((m,i)=>{
-   if(editingIndex === i){
-     list.innerHTML += `
-       <div class="card">
-         <b>${i+1} 編集中</b>
-         <div class="edit-card">
-           ${m.links.map((l,idx)=>`
-             <div class="link-set">
-               <select class="edit-name" data-idx="${idx}">
-                 ${linkTypes.map(t=>`<option ${t===l.name?"selected":""}>${t}</option>`).join("")}
-               </select>
-               <input type="number" class="edit-value" data-idx="${idx}" value="${l.value}" min="1" max="20">
-             </div>
-           `).join("")}
-           <button onclick="saveEdit(${i})">保存</button>
-           <button onclick="cancelEdit()">キャンセル</button>
-         </div>
-       </div>
-     `;
-   } else {
-     list.innerHTML+=`
-       <div class="card">
-         <b>${i+1}:</b><br>
-         ${m.links.map(l=>`${l.name}+${l.value}`).join(" / ")}
-         <br>
-         <button onclick="startEdit(${i})">編集</button>
-         <button onclick="removeModule(${i})">削除</button>
-       </div>`;
-   }
- });
-}
-
-function startEdit(i){
- editingIndex = i;
- render();
-}
-
-function cancelEdit(){
- editingIndex = null;
- render();
-}
-
-function saveEdit(i){
- const names=document.querySelectorAll(".edit-name");
- const vals=document.querySelectorAll(".edit-value");
-
- let newLinks=[];
- for(let j=0;j<names.length;j++){
-   let v=parseInt(vals[j].value);
-   if(!v){alert("値を入力してください");return;}
-   newLinks.push({name:names[j].value,value:v});
- }
-
- modules[i].links = newLinks;
- save();
- editingIndex = null;
- render();
-}
-
-function addModule(){
- if(modules.length>=300){alert("最大300個");return;}
- const names=document.querySelectorAll(".lname");
- const vals=document.querySelectorAll(".lval");
- let links=[];
- for(let i=0;i<names.length;i++){
-   let v=parseInt(vals[i].value);
-   if(!v){alert("値入力");return;}
-   links.push({name:names[i].value,value:v});
- }
- modules.push({links});
- save(); render();
- document.querySelectorAll(".lval").forEach(i=>i.value="");
-}
-
-function removeModule(i){
- modules.splice(i,1); save(); render();
-}
-
-function calculate(){
- const resultsDiv=document.getElementById("results");
- resultsDiv.innerHTML="計算中...";
- const priority=prioritySelect.value;
- let best=[];
-
- for(let a=0;a<modules.length-3;a++){
- for(let b=a+1;b<modules.length-2;b++){
- for(let c=b+1;c<modules.length-1;c++){
- for(let d=c+1;d<modules.length;d++){
-
-   let totals={};
-   [modules[a],modules[b],modules[c],modules[d]].forEach(m=>{
-     m.links.forEach(l=>{
-       totals[l.name]=(totals[l.name]||0)+l.value;
-     });
-   });
-
-   if(!totals[priority]||totals[priority]<20) continue;
-
-   let core16 = {};
-   linkTypes.forEach(k=>{
-     if(k!==priority && (totals[k]||0)>=16){
-       core16[k] = totals[k];
-     }
-   });
-
-   if (Object.keys(core16).length === 0) continue;
-
-   best.push({
-     modules:[a,b,c,d],
-     priorityValue:totals[priority],
-     core16,
-     coreCount: Object.keys(core16).length
-   });
-
- }}}}
-
- lastResults = best;
- renderResults();
-}
-
-function renderResults(){
- const resultsDiv=document.getElementById("results");
- const sortType=document.getElementById("sortType").value;
-
- let arr=[...lastResults];
-
- if(sortType==="count"){
-   arr.sort((a,b)=> b.coreCount - a.coreCount);
- } else {
-   arr.sort((a,b)=>{
-     const A = Object.keys(a.core16).sort().join(",");
-     const B = Object.keys(b.core16).sort().join(",");
-     return A.localeCompare(B,"ja");
-   });
- }
-
- if(arr.length===0){
-   resultsDiv.innerHTML="該当なし";
-   return;
- }
-
- resultsDiv.innerHTML = arr.map((r,i)=>{
-   let coreItems = Object.keys(r.core16).map(k=>
-     `<div class="core-item">${k} ${r.core16[k]}</div>`
-   ).join("");
-
-   let moduleList = r.modules.map(idx=>
-     `${idx+1}: ${modules[idx].links.map(l=>`${l.name}+${l.value}`).join(" / ")}`
-   ).join("<br>---<br>");
-
-   return `
-   <div class="result-card" onclick="toggleDetail('d${i}')">
-     <b>#${i+1}</b><br>
-     優先：${prioritySelect.value} → ${r.priorityValue}<br>
-     <b>16以上のコア</b>
-     <div class="core-grid">${coreItems}</div>
-
-     <div id="d${i}" class="hidden" style="margin-top:6px;">
-       <b>使用モジュール</b><br>
-       ${moduleList}
-     </div>
-   </div>
-   `;
- }).join("");
-}
-
-function toggleDetail(id){
- document.getElementById(id).classList.toggle("hidden");
-}
-
-render();
-</script>
 </body>
 </html>
