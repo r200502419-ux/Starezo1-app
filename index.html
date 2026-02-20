@@ -91,7 +91,6 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 
 <hr>
 
-<!-- ▼ サブパワーコア数フィルタ -->
 <h3>サブパワーコア数で絞り込み</h3>
 <select id="coreCountFilter" onchange="renderResults()">
   <option value="">指定なし</option>
@@ -100,19 +99,16 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
   <option value="1">1個</option>
 </select>
 
-<!-- ▼ パワーコア指定フィルタ -->
 <h3>サブパワーコア指定</h3>
 <select id="coreTypeFilter" onchange="renderResults()">
   <option value="">指定なし</option>
 </select>
 
-<!-- ▼ ソート機能 -->
 <h3>並び替え</h3>
 <select id="sortType" onchange="renderResults()">
   <option value="best">最適順（Lv6数 → Lv5数 → 20に近い順）</option>
 </select>
 
-<!-- ▼ 結果 -->
 <h3>結果</h3>
 <div id="results" class="result-grid"></div>
 
@@ -132,7 +128,6 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 <h3>登録済み</h3>
 <div id="moduleList" class="grid"></div>
 <p style="font-size:12px;color:#aaa">最大300個</p>
-
 <script>
 // ▼ プルダウン順
 const linkTypes = [
@@ -258,7 +253,6 @@ function addModule(){
 function removeModule(i){
  modules.splice(i,1); save(); render();
 }
-
 function calculate(){
  const resultsDiv=document.getElementById("results");
  resultsDiv.innerHTML="計算中...";
@@ -277,20 +271,20 @@ function calculate(){
      });
    });
 
-   // 優先コアは16以上ならOK
+   // 優先コアは16以上でOK
    if(!totals[priority] || totals[priority] < 16) continue;
 
-   // サブパワーコア（優先以外で16以上）
+   // サブパワーコア（優先含む）
    let core16 = {};
    linkTypes.forEach(k=>{
-     if(k!==priority && (totals[k]||0)>=16){
+     if ((totals[k]||0) >= 16) {
        core16[k] = totals[k];
      }
    });
 
    if (Object.keys(core16).length === 0) continue;
 
-   // Lv6 / Lv5 カウント（優先＋サブ全部）
+   // Lv6 / Lv5 カウント
    let lv6Count = 0;
    let lv5Count = 0;
    Object.keys(totals).forEach(k=>{
@@ -299,7 +293,7 @@ function calculate(){
      else if (v >= 16) lv5Count++;
    });
 
-   // 20からの距離（優先＋サブの合計距離）
+   // 20からの距離（最適度）
    let distanceSum = 0;
    Object.keys(totals).forEach(k=>{
      if (totals[k] >= 16) {
@@ -355,11 +349,10 @@ function renderResults(){
    arr = arr.filter(r => Object.keys(r.core16).includes(typeFilter));
  }
 
- // ▼ ソート（Lv6数 → Lv5数 → 20に近い順 → 名前順）
+ // ▼ ソート（Lv6 → Lv5 → 20に近い順 → 名前順）
  arr.sort((a,b)=>{
    if (b.lv6Count !== a.lv6Count) return b.lv6Count - a.lv6Count;
    if (b.lv5Count !== a.lv5Count) return b.lv5Count - a.lv5Count;
-
    if (a.distanceSum !== b.distanceSum) return a.distanceSum - b.distanceSum;
 
    const A = Object.keys(a.core16).sort().join(",");
