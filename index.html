@@ -4,6 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>スタレゾ 最適モジュール検索</title>
+
+<!-- OCRライブラリ -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
 <style>
 body{font-family:sans-serif;background:#111;color:#fff;padding:12px}
 select,input,button{padding:8px;margin:4px 0;width:100%}
@@ -115,6 +119,11 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 <hr>
 
 <h3>モジュール登録</h3>
+
+<!-- ★ 学さんの希望：ここにスクショ読み取りボタンを配置 -->
+<button id="imgReadBtn">📸 スクショから読み取る</button>
+<input type="file" id="imgInput" accept="image/*" multiple style="display:none;">
+<p style="font-size:12px;color:#aaa">最大100枚まで選択可能</p>
 
 <select id="rarity">
 <option value="gold">金（3リンク）</option>
@@ -271,10 +280,8 @@ function calculate(){
      });
    });
 
-   // 優先コアは16以上でOK
    if(!totals[priority] || totals[priority] < 16) continue;
 
-   // サブパワーコア（優先含む）
    let core16 = {};
    linkTypes.forEach(k=>{
      if ((totals[k]||0) >= 16) {
@@ -284,7 +291,6 @@ function calculate(){
 
    if (Object.keys(core16).length === 0) continue;
 
-   // Lv6 / Lv5 カウント
    let lv6Count = 0;
    let lv5Count = 0;
    Object.keys(totals).forEach(k=>{
@@ -293,7 +299,6 @@ function calculate(){
      else if (v >= 16) lv5Count++;
    });
 
-   // 20からの距離（最適度）
    let distanceSum = 0;
    Object.keys(totals).forEach(k=>{
      if (totals[k] >= 16) {
@@ -337,19 +342,16 @@ function renderResults(){
 
  let arr=[...lastResults];
 
- // ▼ サブパワーコア数フィルタ
  const countFilter = document.getElementById("coreCountFilter").value;
  if (countFilter) {
    arr = arr.filter(r => r.coreCount == Number(countFilter));
  }
 
- // ▼ サブパワーコア指定フィルタ
  const typeFilter = document.getElementById("coreTypeFilter").value;
  if (typeFilter) {
    arr = arr.filter(r => Object.keys(r.core16).includes(typeFilter));
  }
 
- // ▼ ソート（Lv6 → Lv5 → 20に近い順 → 名前順）
  arr.sort((a,b)=>{
    if (b.lv6Count !== a.lv6Count) return b.lv6Count - a.lv6Count;
    if (b.lv5Count !== a.lv5Count) return b.lv5Count - a.lv5Count;
@@ -396,14 +398,7 @@ function toggleDetail(id){
 }
 
 render();
-</script>
-</body>
-</html>
-<!-- ▼ OCRライブラリ（Tesseract.js）読み込み -->
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-
-<script>
-// ▼ 重複判定用のキー生成
+// ▼ 重複判定キー
 function makeKey(links){
   return links
     .slice()
@@ -412,26 +407,19 @@ function makeKey(links){
     .join("|");
 }
 
-// ▼ OCRでスクショ読み取り → モジュール登録
+// ▼ OCR読み取り
 async function readFromImage(file){
-  const result = await Tesseract.recognize(file, 'jpn', {
-    logger: m => console.log(m)
-  });
-
+  const result = await Tesseract.recognize(file, 'jpn');
   let text = result.data.text;
-  console.log("OCR結果:", text);
 
-  // ▼ 「名前 + 数値」を抽出
   let lines = text.split("\n").map(t=>t.trim()).filter(t=>t);
   let links = [];
 
   lines.forEach(line=>{
-    // 例: "敏捷強化 +6"
     let m = line.match(/(.+?)\s*\+(\d+)/);
     if(m){
       let name = m[1].trim();
       let value = parseInt(m[2]);
-      // ゲーム内のリンク名と一致するものだけ採用
       if(linkTypes.includes(name)){
         links.push({name,value});
       }
@@ -443,7 +431,6 @@ async function readFromImage(file){
     return;
   }
 
-  // ▼ 重複チェック
   let key = makeKey(links);
   let exists = modules.some(m => makeKey(m.links) === key);
 
@@ -452,31 +439,25 @@ async function readFromImage(file){
     return;
   }
 
-  // ▼ 新規登録
   modules.push({links});
   save();
   render();
   alert("1モジュール登録しました！");
 }
 
-// ▼ 画像選択UIを作成
-function setupImageInput(){
-  const area = document.createElement("div");
-  area.innerHTML = `
-    <h3>スクショから読み取る</h3>
-    <input type="file" id="imgInput" accept="image/*" multiple>
-    <p style="font-size:12px;color:#aaa">最大100枚まで選択可能</p>
-  `;
-  document.body.appendChild(area);
+// ▼ ボタン → 画像選択
+document.getElementById("imgReadBtn").addEventListener("click", ()=>{
+  document.getElementById("imgInput").click();
+});
 
-  document.getElementById("imgInput").addEventListener("change", async (e)=>{
-    const files = [...e.target.files].slice(0,100);
-    for(let f of files){
-      await readFromImage(f);
-    }
-  });
-}
-
-// ▼ ページ読み込み時に画像入力欄を追加
-setupImageInput();
+// ▼ 画像選択 → OCR
+document.getElementById("imgInput").addEventListener("change", async (e)=>{
+  const files = [...e.target.files].slice(0,100);
+  for(let f of files){
+    await readFromImage(f);
+  }
+});
 </script>
+
+</body>
+</html>
