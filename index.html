@@ -34,9 +34,23 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 <h3>最優先パワーコア</h3>
 <select id="priority"></select>
 
+<h3>最優先パワーコアの最低値</h3>
+<select id="priorityMin">
+  <option value="16">16〜19</option>
+  <option value="20">20</option>
+  <option value="21">21以上</option>
+</select>
+
 <h3>サブパワーコア（種類指定）</h3>
 <select id="subCoreType">
   <option value="">指定なし</option>
+</select>
+
+<h3>サブパワーコアの最低値</h3>
+<select id="subCoreMin">
+  <option value="16">16〜19</option>
+  <option value="20">20</option>
+  <option value="21">21以上</option>
 </select>
 
 <button onclick="calculate()">計算（全件表示）</button>
@@ -80,6 +94,7 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 <h3>登録済み</h3>
 <div id="moduleList" class="grid"></div>
 <p style="font-size:12px;color:#aaa">最大300個</p>
+
 <script>
 const linkTypes=[
 "極・ダメージ増強","極・適応力","極・HP変動","極・HP凝縮",
@@ -203,8 +218,9 @@ function addModule(){
 function removeModule(i){
  modules.splice(i,1);save();render();
 }
+
 /* ============================
-   ここから A方式（2＋2分割）高速化エンジン
+   A方式（2＋2分割）高速化エンジン
    ============================ */
 
 function calculate(){
@@ -214,7 +230,9 @@ function calculate(){
   const priority=prioritySelect.value;
   const subCore=subCoreSelect.value;
 
-  // 2つの組を全部作る（約3万通り）
+  const priorityMin = Number(document.getElementById("priorityMin").value);
+  const subCoreMin = Number(document.getElementById("subCoreMin").value);
+
   let pairs=[];
 
   for(let i=0;i<modules.length-1;i++){
@@ -228,11 +246,8 @@ function calculate(){
         totals[l.name]=(totals[l.name]||0)+l.value;
       });
 
-      // 2つの組の段階で優先パワーが弱すぎる場合は保存しない
-      if(priority && (!totals[priority] || totals[priority] < 8)) continue;
-
-      // サブパワー種類指定がある場合も同様
-      if(subCore && (!totals[subCore] || totals[subCore] < 8)) continue;
+      if(priority && (!totals[priority] || totals[priority] < priorityMin/2)) continue;
+      if(subCore && (!totals[subCore] || totals[subCore] < subCoreMin/2)) continue;
 
       pairs.push({
         idx1:i,
@@ -242,13 +257,11 @@ function calculate(){
     }
   }
 
-  // 4つの組を作る（pairA と pairB を合体）
   let best=[];
 
   for(let a=0;a<pairs.length-1;a++){
     for(let b=a+1;b<pairs.length;b++){
 
-      // 同じモジュールを使っていたら無効
       if(
         pairs[a].idx1===pairs[b].idx1 ||
         pairs[a].idx1===pairs[b].idx2 ||
@@ -256,7 +269,6 @@ function calculate(){
         pairs[a].idx2===pairs[b].idx2
       ) continue;
 
-      // 合体した totals を作る
       let totals={};
       const addTotals=(obj)=>{
         Object.keys(obj).forEach(k=>{
@@ -266,20 +278,15 @@ function calculate(){
       addTotals(pairs[a].totals);
       addTotals(pairs[b].totals);
 
-      // 優先パワーコア 16 未満は除外
-      if(!totals[priority] || totals[priority] < 16) continue;
+      if(!totals[priority] || totals[priority] < priorityMin) continue;
+      if(subCore && (!totals[subCore] || totals[subCore] < subCoreMin)) continue;
 
-      // サブパワー種類指定がある場合
-      if(subCore && (!totals[subCore] || totals[subCore] < 16)) continue;
-
-      // 16以上のリンクを抽出
       let core16={};
       linkTypes.forEach(k=>{
         if((totals[k]||0)>=16) core16[k]=totals[k];
       });
       if(Object.keys(core16).length===0) continue;
 
-      // Lv6 / Lv5 カウント
       let lv6Count=0;
       let lv5Count=0;
       Object.keys(totals).forEach(k=>{
@@ -288,7 +295,6 @@ function calculate(){
         else if(v>=16) lv5Count++;
       });
 
-      // 20 への距離
       let distanceSum=0;
       Object.keys(totals).forEach(k=>{
         if(totals[k]>=16) distanceSum+=Math.abs(20-totals[k]);
@@ -315,10 +321,6 @@ function calculate(){
   updateCoreTypeFilter();
   renderResults();
 }
-
-/* ============================
-   結果表示
-   ============================ */
 
 function updateCoreTypeFilter(){
  const sel=document.getElementById("coreTypeFilter");
