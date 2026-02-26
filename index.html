@@ -225,6 +225,14 @@ function removeModule(i){
    A方式（2＋2分割）高速化エンジン
    ============================ */
 
+function inRange(value, min){
+  if(min === null) return true;
+  if(min === 16) return value >= 16 && value <= 19;
+  if(min === 20) return value >= 20;
+  if(min === 21) return value >= 21;
+  return true;
+}
+
 function calculate(){
   const resultsDiv=document.getElementById("results");
   resultsDiv.innerHTML="計算中…（高速化エンジン稼働）";
@@ -232,11 +240,11 @@ function calculate(){
   const priority=prioritySelect.value;
   const subCore=subCoreSelect.value;
 
-  const priorityMin = document.getElementById("priorityMin").value;
-  const subCoreMin = document.getElementById("subCoreMin").value;
+  const priorityMinRaw=document.getElementById("priorityMin").value;
+  const subCoreMinRaw=document.getElementById("subCoreMin").value;
 
-  const priorityMinVal = priorityMin ? Number(priorityMin) : null;
-  const subCoreMinVal = subCoreMin ? Number(subCoreMin) : null;
+  const priorityMinVal=priorityMinRaw?Number(priorityMinRaw):null;
+  const subCoreMinVal=subCoreMinRaw?Number(subCoreMinRaw):null;
 
   let pairs=[];
 
@@ -251,19 +259,15 @@ function calculate(){
         totals[l.name]=(totals[l.name]||0)+l.value;
       });
 
-      if(priorityMinVal !== null){
-        if(priority && (!totals[priority] || totals[priority] < priorityMinVal/2)) continue;
+      if(priority && priorityMinVal!==null){
+        if(!inRange(totals[priority]||0, priorityMinVal/2)) continue;
       }
 
-      if(subCoreMinVal !== null){
-        if(subCore && (!totals[subCore] || totals[subCore] < subCoreMinVal/2)) continue;
+      if(subCore && subCoreMinVal!==null){
+        if(!inRange(totals[subCore]||0, subCoreMinVal/2)) continue;
       }
 
-      pairs.push({
-        idx1:i,
-        idx2:j,
-        totals
-      });
+      pairs.push({idx1:i,idx2:j,totals});
     }
   }
 
@@ -288,12 +292,12 @@ function calculate(){
       addTotals(pairs[a].totals);
       addTotals(pairs[b].totals);
 
-      if(priorityMinVal !== null){
-        if(!totals[priority] || totals[priority] < priorityMinVal) continue;
+      if(priority && priorityMinVal!==null){
+        if(!inRange(totals[priority]||0, priorityMinVal)) continue;
       }
 
-      if(subCoreMinVal !== null){
-        if(subCore && (!totals[subCore] || totals[subCore] < subCoreMinVal)) continue;
+      if(subCore && subCoreMinVal!==null){
+        if(!inRange(totals[subCore]||0, subCoreMinVal)) continue;
       }
 
       let core16={};
