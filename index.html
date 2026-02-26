@@ -410,7 +410,7 @@ function makeKey(links){
     .join("|");
 }
 
-// ▼ OCR読み取り（2行形式対応・超強化版）
+// ▼ OCR読み取り（3行構造対応・最終版）
 async function readFromImage(file){
   const result = await Tesseract.recognize(file, 'jpn');
   let text = result.data.text;
@@ -428,33 +428,40 @@ async function readFromImage(file){
     let line = lines[i];
 
     // ① 1行形式
-    let m1 = line.match(/(.+?)\s*\+\s*(\d+)/);
+    let m1 = line.match(/(.+?)\s*\+?\s*(\d+)/);
     if(m1){
       let rawName = m1[1].trim();
       let value = parseInt(m1[2]);
       let name = rawName.replace(/・/g,"").replace(/\s/g,"");
       let matched = linkTypes.find(t => t.replace(/・/g,"").replace(/\s/g,"") === name);
-      if(matched) links.push({name: matched, value});
-      continue;
-    }
-
-    // ② 2行形式（名前 → 次の行が数字）
-    let rawName = line;
-    let next = lines[i+1];
-
-    if(next && /^\d+$/.test(next)){
-      let value = parseInt(next);
-      let name = rawName.replace(/・/g,"").replace(/\s/g,"");
-      let matched = linkTypes.find(t => t.replace(/・/g,"").replace(/\s/g,"") === name);
       if(matched){
         links.push({name: matched, value});
-        i++; // 数値行をスキップ
+        continue;
+      }
+    }
+
+    // ② 3行形式（名前 → ゲージ → 数字）
+    let rawName = line;
+    let next1 = lines[i+1];
+    let next2 = lines[i+2];
+
+    let isGauge = next1 && /[■□▮▯█]/.test(next1);
+
+    if(isGauge && next2 && /^\d+$/.test(next2)){
+      let value = parseInt(next2);
+      let name = rawName.replace(/・/g,"").replace(/\s/g,"");
+      let matched = linkTypes.find(t =>
+        t.replace(/・/g,"").replace(/\s/g,"") === name
+      );
+      if(matched){
+        links.push({name: matched, value});
+        i += 2;
       }
     }
   }
 
   if(links.length === 0){
-    alert("リンクが読み取れませんでした（2行形式の可能性）");
+    alert("読み取れませんでした（ゲーム画面の3行構造）");
     return;
   }
 
