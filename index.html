@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -120,7 +120,7 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 
 <h3>モジュール登録</h3>
 
-<!-- ★ 学さんの希望：ここにスクショ読み取りボタンを配置 -->
+<!-- ★ スクショ読み取りボタン -->
 <button id="imgReadBtn">📸 スクショから読み取る</button>
 <input type="file" id="imgInput" accept="image/*" multiple style="display:none;">
 <p style="font-size:12px;color:#aaa">最大100枚まで選択可能</p>
@@ -137,6 +137,7 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 <h3>登録済み</h3>
 <div id="moduleList" class="grid"></div>
 <p style="font-size:12px;color:#aaa">最大300個</p>
+
 <script>
 // ▼ プルダウン順
 const linkTypes = [
@@ -262,6 +263,7 @@ function addModule(){
 function removeModule(i){
  modules.splice(i,1); save(); render();
 }
+
 function calculate(){
  const resultsDiv=document.getElementById("results");
  resultsDiv.innerHTML="計算中...";
@@ -398,6 +400,7 @@ function toggleDetail(id){
 }
 
 render();
+
 // ▼ 重複判定キー
 function makeKey(links){
   return links
@@ -407,27 +410,40 @@ function makeKey(links){
     .join("|");
 }
 
-// ▼ OCR読み取り
+// ▼ OCR読み取り（強化版）
 async function readFromImage(file){
   const result = await Tesseract.recognize(file, 'jpn');
   let text = result.data.text;
+
+  text = text
+    .replace(/＋/g, "+")
+    .replace(/　/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 
   let lines = text.split("\n").map(t=>t.trim()).filter(t=>t);
   let links = [];
 
   lines.forEach(line=>{
-    let m = line.match(/(.+?)\s*\+(\d+)/);
-    if(m){
-      let name = m[1].trim();
-      let value = parseInt(m[2]);
-      if(linkTypes.includes(name)){
-        links.push({name,value});
-      }
+    let m = line.match(/(.+?)\s*\+\s*(\d+)/);
+    if(!m) return;
+
+    let rawName = m[1].trim();
+    let value = parseInt(m[2]);
+
+    let name = rawName.replace(/・/g, "").replace(/\s/g, "");
+
+    let matched = linkTypes.find(t => 
+      t.replace(/・/g,"").replace(/\s/g,"") === name
+    );
+
+    if(matched){
+      links.push({name: matched, value});
     }
   });
 
   if(links.length === 0){
-    alert("リンクが読み取れませんでした");
+    alert("リンクが読み取れませんでした（表記ゆれの可能性）");
     return;
   }
 
