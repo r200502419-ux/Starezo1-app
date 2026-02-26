@@ -33,6 +33,101 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
   gap:4px;
 }
 .core-item{
+  width:48%;
+  background:#222;
+  padding:4px;
+  border-radius:4px;
+  font-size:11px;
+}
+
+/* 登録モジュールの3列表示 */
+.grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.grid .card{
+  width:31%;
+  background:#222;
+  padding:8px;
+  border-radius:6px;
+  font-size:13px;
+}
+
+/* 編集フォーム */
+.edit-card{
+  background:#333;
+  padding:8px;
+  border-radius:6px;
+  margin-top:6px;
+}
+
+/* リンクセット */
+.link-set{
+  background:#222;
+  padding:10px;
+  margin:6px 0;
+  border-radius:6px;
+}
+.link-set select{
+  width:60%;
+  display:inline-block;
+}
+.link-set input{
+  width:35%;
+  display:inline-block;
+  margin-left:4px;
+}
+</style>
+</head>
+<body>
+
+<h2>最優先Lv6 / Lv5 組み合わせ検索ツール</h2>
+
+<h3>最優先パワーコア</h3>
+<select id="priority"></select>
+
+<button onclick="calculate()">計算（全件表示）</button>
+
+<hr>
+
+<h3>サブパワーコア数で絞り込み</h3>
+<select id="coreCountFilter" onchange="renderResults()">
+  <option value="">指定なし</option>
+  <option value="3">3個</option>
+  <option value="2">2個</option>
+  <option value="1">1個</option>
+</select>
+
+<h3>サブパワーコア指定</h3>
+<select id="coreTypeFilter" onchange="renderResults()">
+  <option value="">指定なし</option>
+</select>
+
+<h3>並び替え</h3>
+<select id="sortType" onchange="renderResults()">
+  <option value="best">最適順（Lv6数 → Lv5数 → 20に近い順）</option>
+</select>
+
+<h3>結果</h3>
+<div id="results" class="result-grid"></div>
+
+<hr>
+
+<h3>モジュール登録</h3>
+
+<select id="rarity">
+<option value="gold">金（3リンク）</option>
+<option value="purple">紫（2リンク）</option>
+</select>
+
+<div id="links"></div>
+
+<button onclick="addModule()">追加</button>
+
+<h3>登録済み</h3>
+<div id="moduleList" class="grid"></div>
+<p style="font-size:12px;color:#aaa">最大300個</p>
 <script>
 // ▼ プルダウン順
 const linkTypes = [
@@ -105,7 +200,59 @@ function render(){
        <div class="card">
          <b>${i+1}:</b><br>
          ${m.links.map(l=>`${l.name}+${l.value}`).join(" / ")}
-         
+         <br>
+         <button onclick="startEdit(${i})">編集</button>
+         <button onclick="removeModule(${i})">削除</button>
+       </div>`;
+   }
+ });
+}
+
+function startEdit(i){
+ editingIndex = i;
+ render();
+}
+
+function cancelEdit(){
+ editingIndex = null;
+ render();
+}
+
+function saveEdit(i){
+ const names=document.querySelectorAll(".edit-name");
+ const vals=document.querySelectorAll(".edit-value");
+
+ let newLinks=[];
+ for(let j=0;j<names.length;j++){
+   let v=parseInt(vals[j].value);
+   if(!v){alert("値を入力してください");return;}
+   newLinks.push({name:names[j].value,value:v});
+ }
+
+ modules[i].links = newLinks;
+ save();
+ editingIndex = null;
+ render();
+}
+
+function addModule(){
+ if(modules.length>=300){alert("最大300個");return;}
+ const names=document.querySelectorAll(".lname");
+ const vals=document.querySelectorAll(".lval");
+ let links=[];
+ for(let i=0;i<names.length;i++){
+   let v=parseInt(vals[i].value);
+   if(!v){alert("値入力");return;}
+   links.push({name:names[i].value,value:v});
+ }
+ modules.push({links});
+ save(); render();
+ document.querySelectorAll(".lval").forEach(i=>i.value="");
+}
+
+function removeModule(i){
+ modules.splice(i,1); save(); render();
+}
 function calculate(){
  const resultsDiv=document.getElementById("results");
  resultsDiv.innerHTML="計算中...";
