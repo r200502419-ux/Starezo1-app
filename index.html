@@ -36,6 +36,7 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 
 <h3>最優先パワーコアの最低値</h3>
 <select id="priorityMin">
+  <option value="">指定なし</option>
   <option value="16">16〜19</option>
   <option value="20">20</option>
   <option value="21">21以上</option>
@@ -48,6 +49,7 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 
 <h3>サブパワーコアの最低値</h3>
 <select id="subCoreMin">
+  <option value="">指定なし</option>
   <option value="16">16〜19</option>
   <option value="20">20</option>
   <option value="21">21以上</option>
@@ -230,8 +232,11 @@ function calculate(){
   const priority=prioritySelect.value;
   const subCore=subCoreSelect.value;
 
-  const priorityMin = Number(document.getElementById("priorityMin").value);
-  const subCoreMin = Number(document.getElementById("subCoreMin").value);
+  const priorityMin = document.getElementById("priorityMin").value;
+  const subCoreMin = document.getElementById("subCoreMin").value;
+
+  const priorityMinVal = priorityMin ? Number(priorityMin) : null;
+  const subCoreMinVal = subCoreMin ? Number(subCoreMin) : null;
 
   let pairs=[];
 
@@ -246,8 +251,13 @@ function calculate(){
         totals[l.name]=(totals[l.name]||0)+l.value;
       });
 
-      if(priority && (!totals[priority] || totals[priority] < priorityMin/2)) continue;
-      if(subCore && (!totals[subCore] || totals[subCore] < subCoreMin/2)) continue;
+      if(priorityMinVal !== null){
+        if(priority && (!totals[priority] || totals[priority] < priorityMinVal/2)) continue;
+      }
+
+      if(subCoreMinVal !== null){
+        if(subCore && (!totals[subCore] || totals[subCore] < subCoreMinVal/2)) continue;
+      }
 
       pairs.push({
         idx1:i,
@@ -278,8 +288,13 @@ function calculate(){
       addTotals(pairs[a].totals);
       addTotals(pairs[b].totals);
 
-      if(!totals[priority] || totals[priority] < priorityMin) continue;
-      if(subCore && (!totals[subCore] || totals[subCore] < subCoreMin)) continue;
+      if(priorityMinVal !== null){
+        if(!totals[priority] || totals[priority] < priorityMinVal) continue;
+      }
+
+      if(subCoreMinVal !== null){
+        if(subCore && (!totals[subCore] || totals[subCore] < subCoreMinVal)) continue;
+      }
 
       let core16={};
       linkTypes.forEach(k=>{
