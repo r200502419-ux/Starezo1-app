@@ -33,101 +33,6 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
   gap:4px;
 }
 .core-item{
-  width:48%;
-  background:#222;
-  padding:4px;
-  border-radius:4px;
-  font-size:11px;
-}
-
-/* 登録モジュールの3列表示 */
-.grid{
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
-}
-.grid .card{
-  width:31%;
-  background:#222;
-  padding:8px;
-  border-radius:6px;
-  font-size:13px;
-}
-
-/* 編集フォーム */
-.edit-card{
-  background:#333;
-  padding:8px;
-  border-radius:6px;
-  margin-top:6px;
-}
-
-/* リンクセット */
-.link-set{
-  background:#222;
-  padding:10px;
-  margin:6px 0;
-  border-radius:6px;
-}
-.link-set select{
-  width:60%;
-  display:inline-block;
-}
-.link-set input{
-  width:35%;
-  display:inline-block;
-  margin-left:4px;
-}
-</style>
-</head>
-<body>
-
-<h2>最優先Lv6 / Lv5 組み合わせ検索ツール</h2>
-
-<h3>最優先パワーコア</h3>
-<select id="priority"></select>
-
-<button onclick="calculate()">計算（全件表示）</button>
-
-<hr>
-
-<h3>サブパワーコア数で絞り込み</h3>
-<select id="coreCountFilter" onchange="renderResults()">
-  <option value="">指定なし</option>
-  <option value="3">3個</option>
-  <option value="2">2個</option>
-  <option value="1">1個</option>
-</select>
-
-<h3>サブパワーコア指定</h3>
-<select id="coreTypeFilter" onchange="renderResults()">
-  <option value="">指定なし</option>
-</select>
-
-<h3>並び替え</h3>
-<select id="sortType" onchange="renderResults()">
-  <option value="best">最適順（Lv6数 → Lv5数 → 20に近い順）</option>
-</select>
-
-<h3>結果</h3>
-<div id="results" class="result-grid"></div>
-
-<hr>
-
-<h3>モジュール登録</h3>
-
-<select id="rarity">
-<option value="gold">金（3リンク）</option>
-<option value="purple">紫（2リンク）</option>
-</select>
-
-<div id="links"></div>
-
-<button onclick="addModule()">追加</button>
-
-<h3>登録済み</h3>
-<div id="moduleList" class="grid"></div>
-<p style="font-size:12px;color:#aaa">最大300個</p>
 <script>
 // ▼ プルダウン順
 const linkTypes = [
@@ -200,59 +105,7 @@ function render(){
        <div class="card">
          <b>${i+1}:</b><br>
          ${m.links.map(l=>`${l.name}+${l.value}`).join(" / ")}
-         <br>
-         <button onclick="startEdit(${i})">編集</button>
-         <button onclick="removeModule(${i})">削除</button>
-       </div>`;
-   }
- });
-}
-
-function startEdit(i){
- editingIndex = i;
- render();
-}
-
-function cancelEdit(){
- editingIndex = null;
- render();
-}
-
-function saveEdit(i){
- const names=document.querySelectorAll(".edit-name");
- const vals=document.querySelectorAll(".edit-value");
-
- let newLinks=[];
- for(let j=0;j<names.length;j++){
-   let v=parseInt(vals[j].value);
-   if(!v){alert("値を入力してください");return;}
-   newLinks.push({name:names[j].value,value:v});
- }
-
- modules[i].links = newLinks;
- save();
- editingIndex = null;
- render();
-}
-
-function addModule(){
- if(modules.length>=300){alert("最大300個");return;}
- const names=document.querySelectorAll(".lname");
- const vals=document.querySelectorAll(".lval");
- let links=[];
- for(let i=0;i<names.length;i++){
-   let v=parseInt(vals[i].value);
-   if(!v){alert("値入力");return;}
-   links.push({name:names[i].value,value:v});
- }
- modules.push({links});
- save(); render();
- document.querySelectorAll(".lval").forEach(i=>i.value="");
-}
-
-function removeModule(i){
- modules.splice(i,1); save(); render();
-}
+         
 function calculate(){
  const resultsDiv=document.getElementById("results");
  resultsDiv.innerHTML="計算中...";
@@ -399,3 +252,84 @@ render();
 </script>
 </body>
 </html>
+<!-- ▼ OCRライブラリ（Tesseract.js）読み込み -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
+
+<script>
+// ▼ 重複判定用のキー生成
+function makeKey(links){
+  return links
+    .slice()
+    .sort((a,b)=>a.name.localeCompare(b.name,"ja"))
+    .map(l => `${l.name}:${l.value}`)
+    .join("|");
+}
+
+// ▼ OCRでスクショ読み取り → モジュール登録
+async function readFromImage(file){
+  const result = await Tesseract.recognize(file, 'jpn', {
+    logger: m => console.log(m)
+  });
+
+  let text = result.data.text;
+  console.log("OCR結果:", text);
+
+  // ▼ 「名前 + 数値」を抽出
+  let lines = text.split("\n").map(t=>t.trim()).filter(t=>t);
+  let links = [];
+
+  lines.forEach(line=>{
+    // 例: "敏捷強化 +6"
+    let m = line.match(/(.+?)\s*\+(\d+)/);
+    if(m){
+      let name = m[1].trim();
+      let value = parseInt(m[2]);
+      // ゲーム内のリンク名と一致するものだけ採用
+      if(linkTypes.includes(name)){
+        links.push({name,value});
+      }
+    }
+  });
+
+  if(links.length === 0){
+    alert("リンクが読み取れませんでした");
+    return;
+  }
+
+  // ▼ 重複チェック
+  let key = makeKey(links);
+  let exists = modules.some(m => makeKey(m.links) === key);
+
+  if(exists){
+    alert("同じモジュールが既に登録されています（重複）");
+    return;
+  }
+
+  // ▼ 新規登録
+  modules.push({links});
+  save();
+  render();
+  alert("1モジュール登録しました！");
+}
+
+// ▼ 画像選択UIを作成
+function setupImageInput(){
+  const area = document.createElement("div");
+  area.innerHTML = `
+    <h3>スクショから読み取る</h3>
+    <input type="file" id="imgInput" accept="image/*" multiple>
+    <p style="font-size:12px;color:#aaa">最大100枚まで選択可能</p>
+  `;
+  document.body.appendChild(area);
+
+  document.getElementById("imgInput").addEventListener("change", async (e)=>{
+    const files = [...e.target.files].slice(0,100);
+    for(let f of files){
+      await readFromImage(f);
+    }
+  });
+}
+
+// ▼ ページ読み込み時に画像入力欄を追加
+setupImageInput();
+</script>
