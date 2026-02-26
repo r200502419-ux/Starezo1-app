@@ -5,23 +5,80 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>スタレゾ 最適モジュール検索</title>
 
-<script src="https://cdn.jsdelivr.net/npm/tesseract.js@4/dist/tesseract.min.js"></script>
-
 <style>
 body{font-family:sans-serif;background:#111;color:#fff;padding:12px}
 select,input,button{padding:8px;margin:4px 0;width:100%}
 button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6px}
-.result-grid{display:flex;flex-wrap:wrap;gap:6px;}
-.result-card{width:31%;background:#1e1e1e;padding:8px;border-radius:6px;border-left:4px solid #00c853;cursor:pointer;font-size:12px;}
+
+/* 結果の3列表示 */
+.result-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.result-card{
+  width:31%;
+  background:#1e1e1e;
+  padding:8px;
+  border-radius:6px;
+  border-left:4px solid #00c853;
+  cursor:pointer;
+  font-size:12px;
+}
 .hidden{display:none}
-.core-grid{display:flex;flex-wrap:wrap;gap:4px;}
-.core-item{width:48%;background:#222;padding:4px;border-radius:4px;font-size:11px;}
-.grid{display:flex;flex-wrap:wrap;gap:6px;}
-.grid .card{width:31%;background:#222;padding:8px;border-radius:6px;font-size:13px;}
-.edit-card{background:#333;padding:8px;border-radius:6px;margin-top:6px;}
-.link-set{background:#222;padding:10px;margin:6px 0;border-radius:6px;}
-.link-set select{width:60%;display:inline-block;}
-.link-set input{width:35%;display:inline-block;margin-left:4px;}
+
+/* サブパワーコアの2列表示 */
+.core-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+}
+.core-item{
+  width:48%;
+  background:#222;
+  padding:4px;
+  border-radius:4px;
+  font-size:11px;
+}
+
+/* 登録モジュールの3列表示 */
+.grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.grid .card{
+  width:31%;
+  background:#222;
+  padding:8px;
+  border-radius:6px;
+  font-size:13px;
+}
+
+/* 編集フォーム */
+.edit-card{
+  background:#333;
+  padding:8px;
+  border-radius:6px;
+  margin-top:6px;
+}
+
+/* リンクセット */
+.link-set{
+  background:#222;
+  padding:10px;
+  margin:6px 0;
+  border-radius:6px;
+}
+.link-set select{
+  width:60%;
+  display:inline-block;
+}
+.link-set input{
+  width:35%;
+  display:inline-block;
+  margin-left:4px;
+}
 </style>
 </head>
 <body>
@@ -60,10 +117,6 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 
 <h3>モジュール登録</h3>
 
-<button id="imgReadBtn">📸 スクショから読み取る</button>
-<input type="file" id="imgInput" accept="image/*" multiple style="display:none;">
-<p style="font-size:12px;color:#aaa">最大100枚まで選択可能</p>
-
 <select id="rarity">
 <option value="gold">金（3リンク）</option>
 <option value="purple">紫（2リンク）</option>
@@ -78,6 +131,7 @@ button{background:#00c853;border:none;color:#fff;font-size:16px;border-radius:6p
 <p style="font-size:12px;color:#aaa">最大300個</p>
 
 <script>
+// ▼ プルダウン順
 const linkTypes = [
   "極・ダメージ増強","極・適応力","極・HP変動","極・HP凝縮",
   "極・応急処置","極・絶境守護","極・HP吸収","極・幸運会心",
@@ -322,94 +376,6 @@ function toggleDetail(id){
 }
 
 render();
-
-function makeKey(links){
-  return links
-    .slice()
-    .sort((a,b)=>a.name.localeCompare(b.name,"ja"))
-    .map(l => `${l.name}:${l.value}`)
-    .join("|");
-}
-
-// ▼ OCR（3行構造対応 + デバッグ表示）
-async function readFromImage(file){
-  const result = await Tesseract.recognize(file, 'jpn');
-  let text = result.data.text;
-
-  alert("OCR結果（生テキスト）:\n\n" + text);
-
-  text = text
-    .replace(/＋/g, "+")
-    .replace(/　/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-
-  let lines = text.split("\n").map(t=>t.trim()).filter(t=>t);
-  let links = [];
-
-  for(let i=0; i<lines.length; i++){
-    let line = lines[i];
-
-    let m1 = line.match(/(.+?)\s*\+?\s*(\d+)/);
-    if(m1){
-      let rawName = m1[1].trim();
-      let value = parseInt(m1[2]);
-      let name = rawName.replace(/・/g,"").replace(/\s/g,"");
-      let matched = linkTypes.find(t => t.replace(/・/g,"").replace(/\s/g,"") === name);
-      if(matched){
-        links.push({name: matched, value});
-        continue;
-      }
-    }
-
-    let rawName = line;
-    let next1 = lines[i+1];
-    let next2 = lines[i+2];
-
-    let isGauge = next1 && /[■□▮▯█]/.test(next1);
-
-    if(isGauge && next2 && /^\d+$/.test(next2)){
-      let value = parseInt(next2);
-      let name = rawName.replace(/・/g,"").replace(/\s/g,"");
-      let matched = linkTypes.find(t =>
-        t.replace(/・/g,"").replace(/\s/g,"") === name
-      );
-      if(matched){
-        links.push({name: matched, value});
-        i += 2;
-      }
-    }
-  }
-
-  if(links.length === 0){
-    alert("読み取れませんでした（OCR結果を送ってください）");
-    return;
-  }
-
-  let key = makeKey(links);
-  let exists = modules.some(m => makeKey(m.links) === key);
-
-  if(exists){
-    alert("同じモジュールが既に登録されています（重複）");
-    return;
-  }
-
-  modules.push({links});
-  save();
-  render();
-  alert("1モジュール登録しました！");
-}
-
-document.getElementById("imgReadBtn").addEventListener("click", ()=>{
-  document.getElementById("imgInput").click();
-});
-
-document.getElementById("imgInput").addEventListener("change", async (e)=>{
-  const files = [...e.target.files].slice(0,100);
-  for(let f of files){
-    await readFromImage(f);
-  }
-});
 </script>
 
 </body>
